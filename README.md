@@ -216,5 +216,5 @@ This project is provided for educational and commercial use.
 ---
 
 <div align="center">
-  Made with ❤️ by the Sehati Team
+  Made with ❤️ by Mossaab Saouti & Kawter Bendida
 </div>
