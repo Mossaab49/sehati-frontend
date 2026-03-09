@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 /* ─── Demo accounts ─────────────────────────────────────────── */
 const DEMO_ACCOUNTS = [
   { role: 'doctor',  email: 'dr.mossaab@sehati.com', password: 'Doctor@2024', name: 'Dr. Mossaab' },
-  { role: 'patient', email: 'sarah.johnson@email.com', password: 'Patient@2024', name: 'Sarah Johnson' },
+  { role: 'patient', email: 'kaoutar.bendida@email.com', password: 'Patient@2024', name: 'Kaoutar Bendida' },
 ];
 
 export default function LoginPage() {
