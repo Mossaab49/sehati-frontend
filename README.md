@@ -157,7 +157,7 @@ pnpm start
 | Role | Email | Password |
 |------|-------|----------|
 | 🩺 Doctor | `dr.mossaab@sehati.com` | `Doctor@2024` |
-| 🧑‍⚕️ Patient | `sarah.johnson@email.com` | `Patient@2024` |
+| 🧑‍⚕️ Patient | `kaoutar.bendida@email.com` | `Patient@2024` |
 
 > **Note:** Demo accounts use `sessionStorage` only. Connect to a real backend for persistent authentication.
 
