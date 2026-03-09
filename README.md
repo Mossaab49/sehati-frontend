@@ -216,5 +216,6 @@ This project is provided for educational and commercial use.
 ---
 
 <div align="center">
-  Made with ❤️ by Mossaab Saouti & Kawter Bendida
+  Made by Mossaab Saouti & Kaoutar Bendidi
+
 </div>
