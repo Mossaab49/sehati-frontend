@@ -1,251 +1,420 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { unreadStore } from '@/lib/unread-store';
-import { Calendar, MessageSquare, AlertCircle, FileText, Pill, Trash2 } from 'lucide-react';
+import {
+  Calendar, MessageSquare, Star, Trash2, X,
+  CheckCircle2, XCircle, Clock, User, Phone, Stethoscope
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-interface Notification {
-  id: string;
-  type: 'appointment' | 'message' | 'alert' | 'report' | 'medication';
-  title: string;
-  message: string;
-  timestamp: string;
-  read: boolean;
-  icon: React.ReactNode;
+// ─── Types ───────────────────────────────────────────────────────
+
+type NotifType = 'new_appointment' | 'patient_feedback' | 'new_conversation';
+
+interface AppointmentData {
+  patientName:  string;
+  patientPhone: string;
+  specialty:    string;
+  date:         string;
+  time:         string;
 }
+
+interface FeedbackData {
+  patientName: string;
+  rating:      number;
+  comment:     string;
+}
+
+interface ConversationData {
+  patientName: string;
+  preview:     string;
+  convId:      string;
+}
+
+interface Notification {
+  id:        string;
+  type:      NotifType;
+  title:     string;
+  message:   string;
+  timestamp: string;
+  read:      boolean;
+  data:      AppointmentData | FeedbackData | ConversationData;
+}
+
+// ─── Mock Data ───────────────────────────────────────────────────
 
 const MOCK_NOTIFICATIONS: Notification[] = [
   {
     id: '1',
-    type: 'appointment',
-    title: 'New Patient Appointment',
-    message: 'Sarah Johnson has scheduled an appointment with you for today at 14:00.',
+    type: 'new_appointment',
+    title: 'New Appointment Request',
+    message: 'Sarah Johnson has requested an appointment with you.',
     timestamp: '10 minutes ago',
     read: false,
-    icon: <Calendar className="w-5 h-5" />,
+    data: {
+      patientName:  'Sarah Johnson',
+      patientPhone: '+212 6 12 34 56 78',
+      specialty:    'General Checkup',
+      date:         'March 12, 2026',
+      time:         '14:00',
+    } as AppointmentData,
   },
   {
     id: '2',
-    type: 'message',
-    title: 'Patient Message',
-    message: 'Michael Chen sent you a message asking about his test results.',
+    type: 'new_conversation',
+    title: 'New Message from Patient',
+    message: 'Michael Chen started a new conversation with you.',
     timestamp: '32 minutes ago',
     read: false,
-    icon: <MessageSquare className="w-5 h-5" />,
+    data: {
+      patientName: 'Michael Chen',
+      preview:     'Hello Doctor, I have some questions about my test results...',
+      convId:      '2',
+    } as ConversationData,
   },
   {
     id: '3',
-    type: 'report',
-    title: 'Test Results Ready',
-    message: 'Lab results for Emma Davis are now available for review.',
+    type: 'patient_feedback',
+    title: 'New Patient Review',
+    message: 'Emma Davis left a review after her consultation.',
     timestamp: '2 hours ago',
     read: false,
-    icon: <FileText className="w-5 h-5" />,
+    data: {
+      patientName: 'Emma Davis',
+      rating:      5,
+      comment:     'Excellent consultation. Dr. Mossaab was very thorough and professional. I felt heard and well taken care of throughout.',
+    } as FeedbackData,
   },
   {
     id: '4',
-    type: 'medication',
-    title: 'Patient Feedback',
-    message: 'Sarah Johnson left a 5-star review about your consultation.',
-    timestamp: '3 hours ago',
+    type: 'new_appointment',
+    title: 'New Appointment Request',
+    message: 'Omar Benali has requested an appointment with you.',
+    timestamp: 'Yesterday',
     read: true,
-    icon: <Pill className="w-5 h-5" />,
+    data: {
+      patientName:  'Omar Benali',
+      patientPhone: '+212 6 98 76 54 32',
+      specialty:    'Dermatology',
+      date:         'March 14, 2026',
+      time:         '10:30',
+    } as AppointmentData,
   },
   {
     id: '5',
-    type: 'appointment',
-    title: 'Appointment Cancellation',
-    message: 'James Wilson has cancelled his appointment scheduled for March 3 at 10:00.',
-    timestamp: 'Yesterday',
+    type: 'patient_feedback',
+    title: 'New Patient Review',
+    message: 'Layla Hassan left a review after her consultation.',
+    timestamp: '2 days ago',
     read: true,
-    icon: <Calendar className="w-5 h-5" />,
+    data: {
+      patientName: 'Layla Hassan',
+      rating:      4,
+      comment:     'Very professional and kind doctor. Would definitely recommend.',
+    } as FeedbackData,
   },
 ];
 
-type FilterType = 'all' | 'unread' | 'appointment' | 'message' | 'alert';
+// ─── Star Rating ─────────────────────────────────────────────────
+
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <div className="flex gap-0.5 mt-1">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star key={i} className={cn('w-3.5 h-3.5', i < rating ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground')} />
+      ))}
+    </div>
+  );
+}
+
+// ─── Appointment Modal ────────────────────────────────────────────
+
+function AppointmentModal({
+  data, onAccept, onReject, onClose,
+}: {
+  data: AppointmentData;
+  onAccept: () => void;
+  onReject: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <Card className="bg-card border-border w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-400/10 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground text-lg">Appointment Request</h3>
+                <p className="text-xs text-muted-foreground">Review and respond</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary transition-colors text-muted-foreground">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm">
+              <User className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="font-semibold text-foreground">{data.patientName}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-foreground">{data.patientPhone}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Stethoscope className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-foreground">{data.specialty}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-foreground">{data.date}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-foreground">{data.time}</span>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <Button onClick={onReject} variant="outline" className="flex-1 border-destructive text-destructive hover:bg-destructive/10 gap-2">
+              <XCircle className="w-4 h-4" /> Reject
+            </Button>
+            <Button onClick={onAccept} className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
+              <CheckCircle2 className="w-4 h-4" /> Accept
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Feedback Modal ───────────────────────────────────────────────
+
+function FeedbackModal({ data, onClose }: { data: FeedbackData; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <Card className="bg-card border-border w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-yellow-400/10 flex items-center justify-center">
+                <Star className="w-5 h-5 text-yellow-400" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground text-lg">Patient Review</h3>
+                <p className="text-xs text-muted-foreground">from {data.patientName}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary transition-colors text-muted-foreground">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-foreground">{data.patientName}</span>
+              <div className="flex gap-0.5">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={i} className={cn('w-4 h-4', i < data.rating ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground')} />
+                ))}
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">"{data.comment}"</p>
+          </div>
+
+          <Button onClick={onClose} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+            Close
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
-  useEffect(() => {
-    unreadStore.setNotifications(0);
-  }, []);
+  const router = useRouter();
+
+  useEffect(() => { unreadStore.setNotifications(0); }, []);
 
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
-  const [filter, setFilter] = useState<FilterType>('all');
-  const [searchTerm, setSearchTerm] = useState('');
-
-  const filteredNotifications = notifications.filter((notif) => {
-    if (filter === 'all') return true;
-    if (filter === 'unread') return !notif.read;
-    if (filter === 'appointment') return notif.type === 'appointment';
-    if (filter === 'message') return notif.type === 'message';
-    if (filter === 'alert') return notif.type === 'alert';
-    return true;
-  });
+  const [activeCard, setActiveCard]       = useState<Notification | null>(null);
+  const [filter, setFilter]               = useState<'all' | 'unread' | NotifType>('all');
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const handleMarkAsRead = (id: string) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-  };
+  const filtered = notifications.filter((n) => {
+    if (filter === 'all')    return true;
+    if (filter === 'unread') return !n.read;
+    return n.type === filter;
+  });
 
-  const handleDelete = (id: string) => {
-    setNotifications(notifications.filter((n) => n.id !== id));
-  };
+  const markRead = (id: string) =>
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
-  };
+  const handleDelete = (id: string) =>
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'appointment':
-        return 'text-blue-400';
-      case 'message':
-        return 'text-purple-400';
-      case 'alert':
-        return 'text-yellow-400';
-      case 'report':
-        return 'text-green-400';
-      case 'medication':
-        return 'text-cyan-400';
-      default:
-        return 'text-muted-foreground';
+  const handleMarkAllRead = () =>
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+
+  const handleClick = (notif: Notification) => {
+    markRead(notif.id);
+    if (notif.type === 'new_conversation') {
+      // redirect directly to messages page
+      router.push('/doctor/messages');
+    } else {
+      setActiveCard(notif);
     }
   };
 
-  const getTypeBgColor = (type: string) => {
-    switch (type) {
-      case 'appointment':
-        return 'bg-blue-400/10';
-      case 'message':
-        return 'bg-purple-400/10';
-      case 'alert':
-        return 'bg-yellow-400/10';
-      case 'report':
-        return 'bg-green-400/10';
-      case 'medication':
-        return 'bg-cyan-400/10';
-      default:
-        return 'bg-muted/10';
-    }
+  const typeConfig: Record<NotifType, { icon: React.ReactNode; color: string; bg: string; label: string }> = {
+    new_appointment:  { icon: <Calendar className="w-5 h-5" />,      color: 'text-blue-400',   bg: 'bg-blue-400/10',   label: 'Appointment' },
+    new_conversation: { icon: <MessageSquare className="w-5 h-5" />, color: 'text-purple-400', bg: 'bg-purple-400/10', label: 'Message'     },
+    patient_feedback: { icon: <Star className="w-5 h-5" />,          color: 'text-yellow-400', bg: 'bg-yellow-400/10', label: 'Review'      },
   };
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 space-y-6 md:space-y-8 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">Notifications</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-2">You have {unreadCount} unread alerts from your patients</p>
+    <>
+      <div className="p-4 sm:p-6 md:p-8 space-y-6 max-w-4xl mx-auto">
+
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">Notifications</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1">
+              {unreadCount > 0
+                ? `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`
+                : "You're all caught up!"}
+            </p>
+          </div>
+          {unreadCount > 0 && (
+            <Button onClick={handleMarkAllRead} variant="outline" className="border-primary text-primary hover:bg-primary/10">
+              Mark all as read
+            </Button>
+          )}
         </div>
-        {unreadCount > 0 && (
-          <Button
-            onClick={handleMarkAllAsRead}
-            variant="outline"
-            className="border-primary text-primary hover:bg-primary/10"
-          >
-            Mark all as read
-          </Button>
-        )}
-      </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2 flex-wrap">
-        {(['all', 'unread', 'appointment', 'message', 'alert'] as const).map((f) => (
-          <Button
-            key={f}
-            onClick={() => setFilter(f)}
-            variant={filter === f ? 'default' : 'outline'}
-            className={cn(
-              'capitalize',
-              filter === f && 'bg-primary text-primary-foreground'
-            )}
-          >
-            {f === 'all' ? 'All' : f === 'unread' ? `Unread (${unreadCount})` : f}
-          </Button>
-        ))}
-      </div>
-
-      {/* Notifications List */}
-      <div className="space-y-3">
-        {filteredNotifications.length > 0 ? (
-          filteredNotifications.map((notification) => (
-            <Card
-              key={notification.id}
-              className={cn(
-                'bg-card border transition-colors cursor-pointer',
-                notification.read
-                  ? 'border-border hover:border-primary/50'
-                  : 'border-primary/50 bg-primary/5'
-              )}
+        {/* Filter Tabs */}
+        <div className="flex gap-2 flex-wrap">
+          {([
+            { key: 'all',              label: 'All' },
+            { key: 'unread',           label: `Unread (${unreadCount})` },
+            { key: 'new_appointment',  label: 'Appointments' },
+            { key: 'new_conversation', label: 'Messages' },
+            { key: 'patient_feedback', label: 'Reviews' },
+          ] as const).map((f) => (
+            <Button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              variant={filter === f.key ? 'default' : 'outline'}
+              size="sm"
+              className={cn(filter === f.key && 'bg-primary text-primary-foreground')}
             >
-              <div className="p-4 flex items-start gap-4">
-                {/* Icon */}
-                <div
+              {f.label}
+            </Button>
+          ))}
+        </div>
+
+        {/* Notifications List */}
+        <div className="space-y-3">
+          {filtered.length === 0 ? (
+            <Card className="bg-card border-border p-12 text-center">
+              <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">No notifications</h3>
+              <p className="text-muted-foreground">Check back later for new updates.</p>
+            </Card>
+          ) : (
+            filtered.map((notif) => {
+              const cfg = typeConfig[notif.type];
+              return (
+                <Card
+                  key={notif.id}
+                  onClick={() => handleClick(notif)}
                   className={cn(
-                    'flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center',
-                    getTypeBgColor(notification.type)
+                    'border transition-all cursor-pointer hover:shadow-md select-none',
+                    notif.read
+                      ? 'bg-card border-border hover:border-primary/40'
+                      : 'bg-primary/5 border-primary/40'
                   )}
                 >
-                  <div className={getTypeColor(notification.type)}>
-                    {notification.icon}
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-foreground">{notification.title}</h3>
-                        {!notification.read && (
-                          <span className="w-2 h-2 bg-primary rounded-full" />
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{notification.message}</p>
-                      <p className="text-xs text-muted-foreground mt-2">{notification.timestamp}</p>
+                  <div className="p-4 flex items-start gap-4">
+                    <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center shrink-0', cfg.bg)}>
+                      <div className={cfg.color}>{cfg.icon}</div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {!notification.read && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleMarkAsRead(notification.id)}
-                          className="text-primary hover:bg-primary/10"
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <h3 className="font-semibold text-foreground text-sm">{notif.title}</h3>
+                            {!notif.read && <span className="w-2 h-2 bg-primary rounded-full shrink-0" />}
+                            <Badge variant="outline" className={cn('text-[10px] shrink-0 border-current', cfg.color)}>
+                              {cfg.label}
+                            </Badge>
+                          </div>
+
+                          <p className="text-sm text-muted-foreground leading-relaxed">{notif.message}</p>
+
+                          {/* Type-specific previews */}
+                          {notif.type === 'patient_feedback' && (
+                            <StarRating rating={(notif.data as FeedbackData).rating} />
+                          )}
+                          {notif.type === 'new_appointment' && (
+                            <p className="text-xs text-blue-400 mt-1.5 font-medium flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {(notif.data as AppointmentData).date} — {(notif.data as AppointmentData).time}
+                            </p>
+                          )}
+                          {notif.type === 'new_conversation' && (
+                            <p className="text-xs text-purple-400 mt-1.5 font-medium">→ Click to open conversation</p>
+                          )}
+
+                          <p className="text-xs text-muted-foreground mt-2">{notif.timestamp}</p>
+                        </div>
+
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(notif.id); }}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
                         >
-                          Read
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleDelete(notification.id)}
-                        className="text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            </Card>
-          ))
-        ) : (
-          <Card className="bg-card border-border p-12 text-center">
-            <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">No notifications</h3>
-            <p className="text-muted-foreground">You're all caught up! Check back later for new notifications.</p>
-          </Card>
-        )}
+                </Card>
+              );
+            })
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* ── Modals ── */}
+      {activeCard?.type === 'new_appointment' && (
+        <AppointmentModal
+          data={activeCard.data as AppointmentData}
+          onAccept={() => setActiveCard(null)}
+          onReject={() => setActiveCard(null)}
+          onClose={() => setActiveCard(null)}
+        />
+      )}
+      {activeCard?.type === 'patient_feedback' && (
+        <FeedbackModal
+          data={activeCard.data as FeedbackData}
+          onClose={() => setActiveCard(null)}
+        />
+      )}
+    </>
   );
 }
