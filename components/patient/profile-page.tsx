@@ -28,11 +28,21 @@ import type { FamilyMember } from "@/lib/patient-context"
 
 // Simulated account search DB
 const mockAccounts = [
-  { id: "acc-1", name: "Ahmed Benali", email: "ahmed.benali@email.com", avatar: "A" },
-  { id: "acc-2", name: "Sara El Mansouri", email: "sara.mansouri@email.com", avatar: "S" },
-  { id: "acc-3", name: "Omar Tahiri", email: "omar.tahiri@email.com", avatar: "O" },
-  { id: "acc-4", name: "Layla Cherkaoui", email: "layla.cherkaoui@email.com", avatar: "L" },
-  { id: "acc-5", name: "Khalid Ouazzani", email: "khalid.ouazzani@email.com", avatar: "K" },
+  { id: "acc-1",  name: "Ahmed Benali",       email: "ahmed.benali@email.com",       avatar: "A" },
+  { id: "acc-2",  name: "Sara El Mansouri",   email: "sara.mansouri@email.com",      avatar: "S" },
+  { id: "acc-3",  name: "Omar Tahiri",        email: "omar.tahiri@email.com",        avatar: "O" },
+  { id: "acc-4",  name: "Layla Cherkaoui",   email: "layla.cherkaoui@email.com",    avatar: "L" },
+  { id: "acc-5",  name: "Khalid Ouazzani",   email: "khalid.ouazzani@email.com",    avatar: "K" },
+  { id: "acc-6",  name: "Fatima Zahra",      email: "fatima.zahra@email.com",       avatar: "F" },
+  { id: "acc-7",  name: "Youssef Alami",     email: "youssef.alami@email.com",      avatar: "Y" },
+  { id: "acc-8",  name: "Nadia Berrada",     email: "nadia.berrada@email.com",      avatar: "N" },
+  { id: "acc-9",  name: "Hassan Moukrim",    email: "hassan.moukrim@email.com",     avatar: "H" },
+  { id: "acc-10", name: "Imane Bouazza",     email: "imane.bouazza@email.com",      avatar: "I" },
+  { id: "acc-11", name: "Karim Senhaji",     email: "karim.senhaji@email.com",      avatar: "K" },
+  { id: "acc-12", name: "Samira Idrissi",    email: "samira.idrissi@email.com",     avatar: "S" },
+  { id: "acc-13", name: "Amine Tazi",        email: "amine.tazi@email.com",         avatar: "A" },
+  { id: "acc-14", name: "Zineb Kabbaj",      email: "zineb.kabbaj@email.com",       avatar: "Z" },
+  { id: "acc-15", name: "Rachid Bensouda",   email: "rachid.bensouda@email.com",    avatar: "R" },
 ]
 
 export function ProfilePage() {
@@ -458,69 +468,128 @@ export function ProfilePage() {
         {showAddMember && !showApprovalAlert && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4" onClick={() => setShowAddMember(false)}>
             <div className="w-full max-w-sm bg-card rounded-2xl border border-border shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-base font-semibold text-foreground mb-4">{t.addFamilyMember}</h3>
+
+              {/* Header */}
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-base font-semibold text-foreground">{t.addFamilyMember}</h3>
+                <button onClick={() => setShowAddMember(false)} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-secondary transition-colors text-muted-foreground">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
               <div className="space-y-3">
+
                 {/* Search input */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                   <input
                     type="text"
                     placeholder="Search by name or email..."
                     value={memberSearch}
                     onChange={(e) => { setMemberSearch(e.target.value); setSelectedAccount(null) }}
                     className="w-full pl-9 pr-3 py-2.5 text-sm bg-secondary border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    autoFocus
                   />
                 </div>
-                {/* Search results */}
+
+                {/* Search results — rectangle cards */}
                 {filteredAccounts.length > 0 && !selectedAccount && (
-                  <div className="border border-border rounded-xl overflow-hidden max-h-40 overflow-y-auto">
+                  <div className="space-y-1.5 max-h-52 overflow-y-auto pr-0.5">
                     {filteredAccounts.map((account) => (
                       <button
                         key={account.id}
                         onClick={() => handleSelectAccount(account)}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-secondary transition-colors text-left"
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl border border-border bg-background hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
                       >
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm shrink-0">{account.avatar}</div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{account.name}</p>
-                          <p className="text-xs text-muted-foreground">{account.email}</p>
+                        {/* Avatar circle */}
+                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0 group-hover:bg-primary/20 transition-colors">
+                          {account.avatar}
                         </div>
+                        {/* Name + email */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{account.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{account.email}</p>
+                        </div>
+                        {/* Select hint */}
+                        <span className="text-[10px] text-muted-foreground group-hover:text-primary transition-colors shrink-0 font-medium">
+                          Select
+                        </span>
                       </button>
                     ))}
                   </div>
                 )}
-                {/* Selected account */}
-                {selectedAccount && (
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm shrink-0">{selectedAccount.avatar}</div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">{selectedAccount.name}</p>
-                      <p className="text-xs text-muted-foreground">{selectedAccount.email}</p>
+
+                {/* No results */}
+                {memberSearch.length > 1 && filteredAccounts.length === 0 && !selectedAccount && (
+                  <div className="flex flex-col items-center py-5 text-center">
+                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center mb-2">
+                      <Search className="w-4 h-4 text-muted-foreground" />
                     </div>
-                    <button onClick={() => { setSelectedAccount(null); setMemberSearch("") }} className="text-muted-foreground hover:text-foreground">
-                      <X className="w-4 h-4" />
+                    <p className="text-sm font-medium text-foreground">No patient found</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Try a different name or email</p>
+                  </div>
+                )}
+
+                {/* Type hint */}
+                {memberSearch.length <= 1 && !selectedAccount && (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    Type at least 2 characters to search
+                  </p>
+                )}
+
+                {/* Selected account — confirmed card */}
+                {selectedAccount && (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/30">
+                    <div className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                      {selectedAccount.avatar}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{selectedAccount.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{selectedAccount.email}</p>
+                    </div>
+                    <button
+                      onClick={() => { setSelectedAccount(null); setMemberSearch("") }}
+                      className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )}
-                {/* Relationship */}
-                <select
-                  value={memberRelationship}
-                  onChange={(e) => setMemberRelationship(e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm bg-secondary border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                >
-                  <option value="">Select Relationship</option>
-                  <option value="Son">Son</option>
-                  <option value="Daughter">Daughter</option>
-                  <option value="Mother">Mother</option>
-                  <option value="Father">Father</option>
-                  <option value="Spouse">Spouse</option>
-                  <option value="Sibling">Sibling</option>
-                  <option value="Other">Other</option>
-                </select>
+
+                {/* Relationship — only show after selecting a patient */}
+                {selectedAccount && (
+                  <select
+                    value={memberRelationship}
+                    onChange={(e) => setMemberRelationship(e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm bg-secondary border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="">Select Relationship</option>
+                    <option value="Son">Son</option>
+                    <option value="Daughter">Daughter</option>
+                    <option value="Mother">Mother</option>
+                    <option value="Father">Father</option>
+                    <option value="Spouse">Spouse</option>
+                    <option value="Sibling">Sibling</option>
+                    <option value="Other">Other</option>
+                  </select>
+                )}
               </div>
-              <div className="flex gap-2 mt-4">
-                <button onClick={handleAddMember} disabled={!selectedAccount || !memberRelationship} className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl bg-primary text-primary-foreground hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{t.addMember}</button>
-                <button onClick={() => setShowAddMember(false)} className="px-4 py-2.5 text-sm font-medium rounded-xl border border-border text-foreground hover:bg-secondary transition-colors">{t.cancel}</button>
+
+              {/* Actions */}
+              <div className="flex gap-2 mt-5">
+                <button
+                  onClick={handleAddMember}
+                  disabled={!selectedAccount || !memberRelationship}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl bg-primary text-primary-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {t.addMember}
+                </button>
+                <button
+                  onClick={() => setShowAddMember(false)}
+                  className="px-4 py-2.5 text-sm font-medium rounded-xl border border-border text-foreground hover:bg-secondary transition-colors"
+                >
+                  {t.cancel}
+                </button>
               </div>
             </div>
           </div>
