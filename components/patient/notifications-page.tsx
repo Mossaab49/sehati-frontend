@@ -3,7 +3,9 @@
 import { useState } from "react"
 import {
   Bell, Calendar, MessageCircle, CheckCheck,
-  Clock, X, User, Stethoscope, MapPin, CheckCircle2
+  Clock, X, User, Stethoscope, MapPin, CheckCircle2,
+  Users2,
+  UserPlus, XCircle
 } from "lucide-react"
 import { useApp } from "@/lib/patient-context"
 import type { Notification } from "@/lib/patient-context"
@@ -20,9 +22,16 @@ interface AppointmentExtra {
   status:       'upcoming' | 'accepted';
 }
 
+interface FamilyRequestExtra {
+  requesterName:   string;
+  requesterEmail: string;
+  relationship:   string;
+  avatar:         string;
+}
+
 // ─── Extended mock notifications (overrides context ones) ─────────
 
-const PATIENT_NOTIFICATIONS: (Notification & { extra?: AppointmentExtra; convId?: string })[] = [
+const PATIENT_NOTIFICATIONS: (Notification & { extra?: AppointmentExtra; convId?: string ; extraFamily?: FamilyRequestExtra })[] = [
   {
     id: "n1",
     type: "appointment",
@@ -65,6 +74,28 @@ const PATIENT_NOTIFICATIONS: (Notification & { extra?: AppointmentExtra; convId?
     convId: "ai-bot",
   },
   {
+    id: "n5",
+    type: "family-status",
+    title: "Family Member Status Update",
+    description: "Your request to add a new family member has been submitted.",
+    timestamp: new Date(Date.now() - 172800000),
+    read: false,
+  },
+  {
+    id: "n6",
+    type: "family-request",
+    title: "New Family Member Request",
+    description: "You have a new request to add a family member.",
+    timestamp: new Date(Date.now() - 172800000),
+    read: false,
+    extraFamily: {
+      requesterName:  "Ahmed Benali",
+      requesterEmail: "ahmed.benali@email.com",
+      relationship:   "Brother",
+      avatar:         "A",
+    },
+  },
+  {
     id: "n3",
     type: "system",
     title: "Welcome to Sehati",
@@ -73,6 +104,92 @@ const PATIENT_NOTIFICATIONS: (Notification & { extra?: AppointmentExtra; convId?
     read: true,
   },
 ]
+
+// ─── FamilyRequestModal ───────────────────────────────────────────
+
+function FamilyRequestModal({
+  extra,
+  onAccept,
+  onReject,
+  onClose,
+}: {
+  extra:     FamilyRequestExtra;
+  onAccept:  () => void;
+  onReject:  () => void;
+  onClose:   () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl">
+        <div className="p-6 space-y-5">
+
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-400/10 flex items-center justify-center">
+                <Users2 className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground text-lg">Family Request</h3>
+                <p className="text-xs text-muted-foreground">Someone wants to add you</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary transition-colors text-muted-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Status badge */}
+          <div className="px-3 py-2 rounded-xl text-xs font-semibold text-center bg-amber-400/10 text-amber-500">
+            ⏳ Pending your approval
+          </div>
+
+          {/* Info */}
+          <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
+            {/* Avatar + name */}
+            <div className="flex items-center gap-3 pb-2 border-b border-border">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-base shrink-0">
+                {extra.avatar}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">{extra.requesterName}</p>
+                <p className="text-xs text-muted-foreground">{extra.requesterEmail}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm">
+              <Users2 className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground">Relationship:</span>
+              <span className="font-semibold text-foreground">{extra.relationship}</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <button
+              onClick={onReject}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-destructive text-destructive text-sm font-semibold hover:bg-destructive/10 transition-colors"
+            >
+              <XCircle className="w-4 h-4" />
+              Decline
+            </button>
+            <button
+              onClick={onAccept}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Accept
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ─── Appointment Detail Modal ─────────────────────────────────────
 
@@ -169,7 +286,7 @@ export function NotificationsPage() {
   const { markNotificationRead, markAllNotificationsRead, setCurrentPage, setSelectedConversation } = useApp()
 
   const [notifications, setNotifications] = useState(PATIENT_NOTIFICATIONS)
-  const [activeNotif, setActiveNotif]     = useState<typeof PATIENT_NOTIFICATIONS[0] | null>(null)
+  const [activeNotif, setActiveNotif]     = useState<(typeof PATIENT_NOTIFICATIONS)[number] |null>(null)
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
@@ -183,14 +300,15 @@ export function NotificationsPage() {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
   }
 
-  const handleClick = (notif: typeof PATIENT_NOTIFICATIONS[0]) => {
+  const handleClick = (notif: (typeof PATIENT_NOTIFICATIONS)[number]) => {
     markRead(notif.id)
-
+    
     if (notif.type === "message") {
-      // redirect to messages and open the conversation
       if (notif.convId) setSelectedConversation(notif.convId)
       setCurrentPage("messages")
     } else if (notif.type === "appointment" && notif.extra) {
+      setActiveNotif(notif)
+    } else if (notif.type === "family-request" && notif.extraFamily) {
       setActiveNotif(notif)
     }
   }
@@ -211,6 +329,8 @@ export function NotificationsPage() {
     switch (type) {
       case "appointment": return <Calendar className="w-5 h-5 text-primary" />
       case "message":     return <MessageCircle className="w-5 h-5 text-purple-400" />
+      case "family-status":      return <Users2 className="w-5 h-5 text-green-400" />
+      case "family-request":      return <UserPlus className="w-5 h-5 text-green-400" />
       default:            return <Bell className="w-5 h-5 text-muted-foreground" />
     }
   }
@@ -219,6 +339,8 @@ export function NotificationsPage() {
     switch (type) {
       case "appointment": return "bg-primary/10"
       case "message":     return "bg-purple-400/10"
+      case "family-status":      return "bg-green-400/10"
+      case "family-request":      return "bg-green-400/10"
       default:            return "bg-secondary"
     }
   }
@@ -226,6 +348,7 @@ export function NotificationsPage() {
   const getHint = (notif: typeof PATIENT_NOTIFICATIONS[0]) => {
     if (notif.type === "message")     return <p className="text-xs text-purple-400 mt-1 font-medium">→ Click to open conversation</p>
     if (notif.type === "appointment") return <p className="text-xs text-primary mt-1 font-medium">→ Click to view details</p>
+    if (notif.type === "family-request") return <p className="text-xs text-green-400 mt-1 font-medium">→ Click to view request</p>
     return null
   }
 
@@ -305,6 +428,22 @@ export function NotificationsPage() {
           onClose={() => setActiveNotif(null)}
         />
       )}
+
+      {/* Family-request Detail Modal */}
+      {activeNotif?.type === "family-request" && activeNotif.extraFamily && (
+  <FamilyRequestModal
+    extra={activeNotif.extraFamily}
+    onAccept={() => {
+      // TODO: appel API pour accepter
+      setActiveNotif(null)
+    }}
+    onReject={() => {
+      // TODO: appel API pour refuser
+      setActiveNotif(null)
+    }}
+    onClose={() => setActiveNotif(null)}
+  />
+)}
     </>
   )
 }

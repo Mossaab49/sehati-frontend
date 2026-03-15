@@ -83,7 +83,7 @@ export interface Appointment {
 
 export interface Notification {
   id: string
-  type: "appointment" | "message" | "system" | "family"
+  type: "appointment" | "message" | "system" | "family-request" | "family-status"
   title: string
   description: string
   timestamp: Date
